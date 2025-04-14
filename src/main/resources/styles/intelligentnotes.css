@@ -1,0 +1,337 @@
+/* Main application styles */
+.root {
+    -fx-font-family: "Segoe UI", Arial, sans-serif;
+    -fx-font-size: 14px;
+    -fx-background-color: white;
+}
+
+/* Button styles */
+.button {
+    -fx-background-radius: 4px;
+    -fx-cursor: hand;
+    -fx-padding: 6px 12px;
+    -fx-background-color: #f5f5f5;
+    -fx-border-color: #d0d0d0;
+    -fx-border-radius: 4px;
+}
+
+.button:hover {
+    -fx-background-color: #e8e8e8;
+}
+
+.button:pressed {
+    -fx-background-color: #d0d0d0;
+}
+
+/* Primary button style */
+.button.primary {
+    -fx-background-color: #0078d7;
+    -fx-text-fill: white;
+    -fx-border-color: #0067b8;
+}
+
+.button.primary:hover {
+    -fx-background-color: #006cc1;
+}
+
+.button.primary:pressed {
+    -fx-background-color: #005ba9;
+}
+
+/* Danger button style (for delete actions) */
+.button.danger {
+    -fx-background-color: #e74c3c;
+    -fx-text-fill: white;
+    -fx-border-color: #c0392b;
+}
+
+.button.danger:hover {
+    -fx-background-color: #d62c1a;
+}
+
+.button.danger:pressed {
+    -fx-background-color: #c0392b;
+}
+
+/* Text field styles */
+.text-field {
+    -fx-background-radius: 4px;
+    -fx-border-radius: 4px;
+    -fx-border-color: #e0e0e0;
+    -fx-background-color: #f8f8f8;
+    -fx-padding: 8px;
+}
+
+.text-field:focused {
+    -fx-border-color: #0078d7;
+}
+
+/* TreeView styles */
+.tree-view {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+}
+
+.tree-cell {
+    -fx-background-color: transparent;
+    -fx-padding: 6px;
+}
+
+.tree-cell:selected {
+    -fx-background-color: #def;
+    -fx-text-fill: black;
+}
+
+.tree-cell:hover {
+    -fx-background-color: #f5f5f5;
+}
+
+.tree-cell > .tree-disclosure-node > .arrow {
+    -fx-background-color: #444;
+}
+
+/* Search result styles */
+.search-result {
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 8px 0;
+}
+
+.search-result:hover {
+    -fx-background-color: #f0f0f0;
+    -fx-cursor: hand;
+}
+
+/* Note editor styles */
+.html-editor {
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 1;
+}
+
+.html-editor .html-editor-foreground,
+.html-editor .html-editor-background,
+.html-editor .font-family-menu-button,
+.html-editor .font-size-menu-button {
+    -fx-color-label-visible: false;
+}
+
+.html-editor .web-view {
+    -fx-font-smoothing-type: lcd;
+}
+
+.html-editor .separator {
+    -fx-padding: 0 4px;
+}
+
+/* Toolbar styles */
+.formatting-toolbar {
+    -fx-background-color: #f5f5f5;
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 8px;
+    -fx-spacing: 8px;
+}
+
+.formatting-toolbar .button {
+    -fx-min-width: 80px;
+    -fx-max-width: 120px;
+    -fx-padding: 5px 8px;
+}
+
+.formatting-toolbar .separator {
+    -fx-padding: 0 4px;
+}
+
+/* Action bar styles */
+.action-bar {
+    -fx-background-color: #f8f8f8;
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 0 0 0 0;
+    -fx-padding: 1px;
+    -fx-spacing: 1px;
+}
+
+/* Empty state styles */
+.empty-state {
+    -fx-alignment: center;
+    -fx-padding: 20px;
+}
+
+.empty-state-text {
+    -fx-text-fill: #707070;
+    -fx-font-size: 16px;
+}
+
+/* Context menu styles */
+.context-menu {
+    -fx-background-color: white;
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 1;
+    -fx-padding: 5px;
+}
+
+.menu-item {
+    -fx-padding: 5px 10px;
+}
+
+.menu-item:focused {
+    -fx-background-color: #def;
+}
+
+.menu-item:focused .label {
+    -fx-text-fill: black;
+}
+
+/* Dialog styles */
+.dialog-pane {
+    -fx-background-color: white;
+}
+
+.dialog-pane .header-panel {
+    -fx-background-color: #f0f0f0;
+}
+
+.dialog-pane .button-bar .button {
+    -fx-padding: 6px 12px;
+}
+
+/* Divider styles */
+.separator {
+    -fx-background-color: #e0e0e0;
+}
+
+.separator:vertical .line {
+    -fx-border-width: 0 0 0 1;
+    -fx-border-color: #e0e0e0;
+}mvn
+
+/*!* Main application styles *!*/
+/*.root {*/
+/*    -fx-font-family: "Segoe UI", Arial, sans-serif;*/
+/*    -fx-font-size: 14px;*/
+/*    -fx-background-color: white;*/
+/*}*/
+
+/*!* Button styles *!*/
+/*.button {*/
+/*    -fx-background-radius: 4px;*/
+/*    -fx-cursor: hand;*/
+/*    -fx-padding: 8px 12px;*/
+/*}*/
+
+/*.button:hover {*/
+/*    -fx-opacity: 0.9;*/
+/*}*/
+
+/*!* Primary button style *!*/
+/*.button.primary {*/
+/*    -fx-background-color: #0078d7;*/
+/*    -fx-text-fill: white;*/
+/*}*/
+
+/*!* Text field styles *!*/
+/*.text-field {*/
+/*    -fx-background-radius: 4px;*/
+/*    -fx-border-radius: 4px;*/
+/*    -fx-border-color: #e0e0e0;*/
+/*    -fx-background-color: #f8f8f8;*/
+/*    -fx-padding: 8px;*/
+/*}*/
+
+/*.text-field:focused {*/
+/*    -fx-border-color: #0078d7;*/
+/*}*/
+
+/*!* TreeView styles *!*/
+/*.tree-view {*/
+/*    -fx-background-color: transparent;*/
+/*    -fx-border-width: 0;*/
+/*}*/
+
+/*.tree-cell {*/
+/*    -fx-background-color: transparent;*/
+/*    -fx-padding: 6px;*/
+/*}*/
+
+/*.tree-cell:selected {*/
+/*    -fx-background-color: #def;*/
+/*    -fx-text-fill: black;*/
+/*}*/
+
+/*.tree-cell > .tree-disclosure-node > .arrow {*/
+/*    -fx-background-color: #444;*/
+/*}*/
+
+/*!* Search result styles *!*/
+/*.search-result {*/
+/*    -fx-border-color: #e0e0e0;*/
+/*    -fx-border-width: 0 0 1 0;*/
+/*    -fx-padding: 8px 0;*/
+/*}*/
+
+/*.search-result:hover {*/
+/*    -fx-background-color: #f0f0f0;*/
+/*    -fx-cursor: hand;*/
+/*}*/
+
+/*!* Note editor styles *!*/
+/*.html-editor {*/
+/*    -fx-border-color: #e0e0e0;*/
+/*    -fx-border-width: 1;*/
+/*}*/
+
+/*.html-editor .html-editor-foreground {*/
+/*    -fx-color-label-visible: false;*/
+/*}*/
+
+/*.html-editor .html-editor-background {*/
+/*    -fx-color-label-visible: false;*/
+/*}*/
+
+/*.html-editor .separator {*/
+/*    -fx-padding: 0 2;*/
+/*}*/
+
+/*!* Empty state styles *!*/
+/*.empty-state-icon {*/
+/*    -fx-opacity: 0.5;*/
+/*}*/
+
+/*.empty-state-text {*/
+/*    -fx-text-fill: #606060;*/
+/*    -fx-font-size: 16px;*/
+/*}*/
+
+/*!* Context menu styles *!*/
+/*.context-menu {*/
+/*    -fx-background-color: white;*/
+/*    -fx-border-color: #e0e0e0;*/
+/*    -fx-border-width: 1;*/
+/*}*/
+
+/*.menu-item:focused {*/
+/*    -fx-background-color: #def;*/
+/*}*/
+
+/*.menu-item:focused .label {*/
+/*    -fx-text-fill: black;*/
+/*}*/
+
+/*!* Toolbar styles *!*/
+/*.toolbar {*/
+/*    -fx-background-color: #f0f0f0;*/
+/*    -fx-border-color: #e0e0e0;*/
+/*    -fx-border-width: 0 0 1 0;*/
+/*    -fx-padding: 5;*/
+/*}*/
+
+/*.toolbar-button {*/
+/*    -fx-background-color: transparent;*/
+/*    -fx-min-width: 30;*/
+/*    -fx-max-width: 30;*/
+/*    -fx-pref-height: 30;*/
+/*}*/
+
+/*.toolbar-button:hover {*/
+/*    -fx-background-color: #e0e0e0;*/
+/*}*/
