@@ -100,7 +100,7 @@ public class FolderManagementComponent extends VBox {
 
         actionBar.getChildren().addAll(newFolderBtn, newNoteBtn, deleteBtn);
 
-// Add action bar to the bottom of the component
+        // Add action bar to the bottom of the component
         this.getChildren().add(actionBar);
     }
 
@@ -194,11 +194,20 @@ public class FolderManagementComponent extends VBox {
             Note note = (Note) selectedObj;
             Folder parentFolder = findParentFolder(item);
             noteEditor.loadNote(note, parentFolder);
+
+            // Make sure the note editor is visible in the main layout
+            if (mainLayout != null) {
+                System.out.println("Setting note editor as center content after selection");
+                mainLayout.setCenter(noteEditor);
+            } else {
+                System.out.println("Main layout is null when handling selection");
+            }
         } else if (selectedObj instanceof Folder) {
-            // Could add folder summary view here
+            // If a folder is selected, we could add folder summary view here
+            // But for now, we'll leave the current view as is
+            System.out.println("Folder selected: " + item.getValue());
         }
     }
-
     public Folder findParentFolder(TreeItem<String> item) {
         if (item == null) return null;
 

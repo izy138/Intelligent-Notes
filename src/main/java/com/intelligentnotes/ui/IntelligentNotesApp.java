@@ -38,7 +38,6 @@ public class IntelligentNotesApp extends Application {
     private FolderManagementComponent folderManager;
     private NoteEditorComponent noteEditor;
 
-
     @Override
     public void start(Stage primaryStage) {
         // Initialize file system storage
@@ -51,20 +50,19 @@ public class IntelligentNotesApp extends Application {
         // Initialize summary service with Claude (falls back to local if API key is empty)
         summaryService = new ClaudeAISummaryService(claudeApiKey);
 
-        // Load preferences
-        loadPreferences();
-
-
         // Main layout container
         mainLayout = new BorderPane();
 
-        // Create components
+        // Create components - ORDER MATTERS HERE!
+        // First create the noteEditor
         noteEditor = new NoteEditorComponent(storageService, summaryService);
+
+        // Then create folderManager and pass it references
         folderManager = new FolderManagementComponent(storageService, noteEditor);
-        folderManager.setMainLayout(mainLayout);
+        folderManager.setMainLayout(mainLayout); // Set mainLayout reference
         folderManager.setAiService(summaryService);
 
-        // Create the left sidebar
+        // Create the left sidebar with the folder manager
         VBox leftSidebar = createLeftSidebar();
         mainLayout.setLeft(leftSidebar);
 
@@ -81,9 +79,24 @@ public class IntelligentNotesApp extends Application {
         scene.getStylesheets().add(getClass().getResource("/styles/intelligentnotes.css").toExternalForm());
 
         primaryStage.setTitle("Intelligent Notes");
-        primaryStage.getIcons().add(new Image(getClass().getResourceAsStream("/images/app_icon.png")));
+        try {
+            primaryStage.getIcons().add(new Image(getClass().getResourceAsStream("/images/app_icon.png")));
+        } catch (Exception e) {
+            System.out.println("App icon not found: " + e.getMessage());
+        }
+
         primaryStage.setScene(scene);
         primaryStage.show();
+
+        // Verify that components are properly initialized
+        System.out.println("Application initialized:");
+        System.out.println("- Main Layout: " + (mainLayout != null ? "OK" : "NULL"));
+        System.out.println("- Note Editor: " + (noteEditor != null ? "OK" : "NULL"));
+        System.out.println("- Folder Manager: " + (folderManager != null ? "OK" : "NULL"));
+        System.out.println("- Storage Service: " + (storageService != null ? "OK" : "NULL"));
+
+        // Load folders after everything is initialized
+        folderManager.loadFolders();
     }
 
     private void loadPreferences() {
@@ -184,24 +197,55 @@ public class IntelligentNotesApp extends Application {
         HBox searchBar = new HBox();
         searchBar.setPadding(new Insets(10, 15, 10, 15));
         searchBar.setStyle("-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-width: 0 0 1 0;");
+        searchBar.setAlignment(Pos.CENTER_LEFT);
+        searchBar.setSpacing(10);
 
+        // Create search icon (text-based if image not available)
+        Label searchIcon = new Label("🔍");
+        searchIcon.setStyle("-fx-font-size: 16px;");
+
+        try {
+            ImageView imageView = new ImageView(new Image(getClass().getResourceAsStream("/images/search_icon.png")));
+            imageView.setFitHeight(16);
+            imageView.setFitWidth(16);
+            searchIcon.setGraphic(imageView);
+            searchIcon.setText("");
+        } catch (Exception e) {
+            // Keep the text icon if image fails to load
+            System.out.println("Search icon image not found, using text icon instead");
+        }
+
+        // Create search text field
         TextField searchField = new TextField();
-        searchField.setPromptText("Search by keywords...");
+        searchField.setPromptText("Search notes by keywords...");
         searchField.setPrefHeight(30);
         HBox.setHgrow(searchField, Priority.ALWAYS);
 
-        ImageView searchIcon;
-        try {
-            searchIcon = new ImageView(new Image(getClass().getResourceAsStream("/images/search_icon.png")));
-        } catch (Exception e) {
-            // Fallback to text if image not found
-            searchIcon = new ImageView();
-            searchField.setPromptText("🔍 Search by keywords...");
-        }
-        searchIcon.setFitHeight(16);
-        searchIcon.setFitWidth(16);
+        // Add clear button that appears when text is entered
+        Button clearButton = new Button("✕");
+        clearButton.setStyle("-fx-background-color: transparent;");
+        clearButton.setVisible(false);
+        clearButton.setOnAction(e -> {
+            searchField.clear();
+            clearButton.setVisible(false);
+        });
 
-        // Add search functionality
+        // Search button
+        Button searchButton = new Button("Search");
+        searchButton.setStyle("-fx-background-color: #0078d7; -fx-text-fill: white;");
+        searchButton.setOnAction(e -> {
+            String query = searchField.getText().trim();
+            if (!query.isEmpty()) {
+                searchNotes(query);
+            }
+        });
+
+        // Make the clear button appear/disappear based on text content
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> {
+            clearButton.setVisible(!newVal.isEmpty());
+        });
+
+        // Add search functionality on Enter key
         searchField.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.ENTER) {
                 String query = searchField.getText().trim();
@@ -211,13 +255,11 @@ public class IntelligentNotesApp extends Application {
             }
         });
 
-        searchBar.getChildren().addAll(searchIcon, searchField);
-        searchBar.setAlignment(Pos.CENTER_LEFT);
-        searchBar.setSpacing(10);
+        // Add all components to the search bar
+        searchBar.getChildren().addAll(searchIcon, searchField, clearButton, searchButton);
 
         return searchBar;
     }
-
     private void handleCreateNew() {
         // Show dropdown menu for creating a new note or folder
         ContextMenu createMenu = new ContextMenu();
@@ -244,6 +286,16 @@ public class IntelligentNotesApp extends Application {
     }
 
     private void searchNotes(String query) {
+        System.out.println("Searching for: " + query);
+
+        // Show loading indicator in the center area
+        ProgressIndicator progressIndicator = new ProgressIndicator();
+        progressIndicator.setPrefSize(100, 100);
+        VBox loadingBox = new VBox(progressIndicator, new Label("Searching..."));
+        loadingBox.setAlignment(Pos.CENTER);
+        loadingBox.setSpacing(20);
+        mainLayout.setCenter(loadingBox);
+
         Task<List<SearchResult>> searchTask = new Task<>() {
             @Override
             protected List<SearchResult> call() throws Exception {
@@ -253,7 +305,27 @@ public class IntelligentNotesApp extends Application {
 
         searchTask.setOnSucceeded(e -> {
             List<SearchResult> results = searchTask.getValue();
+            System.out.println("Search completed. Found " + results.size() + " results.");
             showSearchResults(results, query);
+        });
+
+        searchTask.setOnFailed(e -> {
+            System.err.println("Search failed with exception: " + searchTask.getException());
+            searchTask.getException().printStackTrace();
+
+            // Show error message
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Search Error");
+            alert.setHeaderText("An error occurred while searching");
+            alert.setContentText(searchTask.getException().getMessage());
+            alert.showAndWait();
+
+            // Restore previous view
+            if (noteEditor.isNoteLoaded()) {
+                mainLayout.setCenter(noteEditor);
+            } else {
+                mainLayout.setCenter(createEmptyState());
+            }
         });
 
         new Thread(searchTask).start();
@@ -267,42 +339,67 @@ public class IntelligentNotesApp extends Application {
         Label headerLabel = new Label("Search Results for \"" + query + "\"");
         headerLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
 
-        Button backButton = new Button("Back to Editor");
+        Button backButton = new Button("Back");
+        backButton.setStyle("-fx-background-color: #0078d7; -fx-text-fill: white;");
         backButton.setOnAction(e -> {
-            // Replace folderTreeView with a check on the noteEditor's state
+            // Simply restore the layout to its default state
+            // This ensures the folder selection handlers continue to work
             if (noteEditor.isNoteLoaded()) {
                 mainLayout.setCenter(noteEditor);
             } else {
                 mainLayout.setCenter(createEmptyState());
             }
+            System.out.println("Returned to main view from search results");
         });
 
-        resultsView.getChildren().addAll(headerLabel, backButton, new Separator());
+        HBox topBar = new HBox(10, backButton, headerLabel);
+        topBar.setAlignment(Pos.CENTER_LEFT);
+
+        resultsView.getChildren().addAll(topBar, new Separator());
 
         if (results.isEmpty()) {
             Label noResultsLabel = new Label("No results found.");
+            noResultsLabel.setStyle("-fx-font-size: 14px; -fx-padding: 20px 0;");
             resultsView.getChildren().add(noResultsLabel);
         } else {
+            Label resultCountLabel = new Label("Found " + results.size() + " results");
+            resultCountLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #707070; -fx-padding: 0 0 10px 0;");
+            resultsView.getChildren().add(resultCountLabel);
+
             for (SearchResult result : results) {
                 VBox resultBox = new VBox(5);
-                resultBox.setStyle("-fx-border-color: #e0e0e0; -fx-border-width: 0 0 1 0; -fx-padding: 5 0;");
+                resultBox.setPadding(new Insets(10));
+                resultBox.setStyle("-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-radius: 5; -fx-padding: 10; -fx-margin: 5 0;");
 
                 Label titleLabel = new Label(result.getNote().getTitle());
-                titleLabel.setStyle("-fx-font-weight: bold;");
+                titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
 
                 Label pathLabel = new Label("In: " + result.getPath());
-                pathLabel.setStyle("-fx-text-fill: #707070; -fx-font-size: 12px;");
+                pathLabel.setStyle("-fx-text-fill: #505050; -fx-font-size: 12px;");
 
-                Label previewLabel = new Label(result.getPreviewText());
+                // Format preview text
+                String previewText = result.getPreviewText();
+                Label previewLabel = new Label(previewText);
                 previewLabel.setWrapText(true);
+                previewLabel.setMaxWidth(Double.MAX_VALUE);
+                previewLabel.setStyle("-fx-text-fill: #303030;");
 
                 resultBox.getChildren().addAll(titleLabel, pathLabel, previewLabel);
 
                 // Make result clickable
                 resultBox.setOnMouseClicked(event -> {
+                    System.out.println("Clicked on search result: " + result.getNote().getTitle());
                     noteEditor.loadNote(result.getNote(), result.getParentFolder());
                     mainLayout.setCenter(noteEditor);
                 });
+
+                // Add hover effect
+                resultBox.setOnMouseEntered(event ->
+                        resultBox.setStyle("-fx-background-color: #f8f8f8; -fx-border-color: #d0d0d0; -fx-border-radius: 5; -fx-padding: 10; -fx-margin: 5 0;")
+                );
+                resultBox.setOnMouseExited(event ->
+                        resultBox.setStyle("-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-radius: 5; -fx-padding: 10; -fx-margin: 5 0;")
+                );
 
                 resultsView.getChildren().add(resultBox);
             }
@@ -310,8 +407,9 @@ public class IntelligentNotesApp extends Application {
 
         ScrollPane scrollPane = new ScrollPane(resultsView);
         scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background-color: transparent;");
 
-        // Replace the editor with search results temporarily
+        // Replace the editor with search results
         mainLayout.setCenter(scrollPane);
     }
 

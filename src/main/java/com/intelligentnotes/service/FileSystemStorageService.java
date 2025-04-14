@@ -167,14 +167,73 @@ public class FileSystemStorageService implements StorageService {
             if (rootFoldersFile.exists()) {
                 rootFolders = objectMapper.readValue(rootFoldersFile,
                         objectMapper.getTypeFactory().constructCollectionType(List.class, Folder.class));
+
+                // Log information about loaded root folders
+                System.out.println("Loaded " + rootFolders.size() + " root folders from storage");
+
+                // Ensure each folder's notes and subfolders are fully loaded
+                for (Folder folder : rootFolders) {
+                    ensureFolderFullyLoaded(folder);
+                }
+            } else {
+                System.out.println("Root folders file does not exist at: " + rootFoldersFile.getAbsolutePath());
             }
         } catch (IOException e) {
+            System.err.println("Error loading root folders: " + e.getMessage());
             e.printStackTrace();
         }
 
         return rootFolders;
     }
 
+    // Add this helper method to ensure folders are fully loaded
+    private void ensureFolderFullyLoaded(Folder folder) {
+        if (folder == null) return;
+
+        // Check folder path
+        String folderPath = BASE_STORAGE_PATH + "folder_" + folder.getId() + "/";
+        File folderDir = new File(folderPath);
+
+        if (!folderDir.exists()) {
+            System.out.println("Warning: Folder directory does not exist for folder: " + folder.getName());
+            return;
+        }
+
+        // Ensure notes list exists
+        if (folder.getNotes() == null) {
+            folder.setNotes(new ArrayList<>());
+        }
+
+        // Ensure subfolders list exists
+        if (folder.getSubFolders() == null) {
+            folder.setSubFolders(new ArrayList<>());
+        }
+
+        // Load folder metadata file to get the most up-to-date info
+        try {
+            File metadataFile = new File(folderPath + "metadata.json");
+            if (metadataFile.exists()) {
+                Folder updatedFolder = objectMapper.readValue(metadataFile, Folder.class);
+
+                // Update folder with the latest data
+                folder.setName(updatedFolder.getName());
+                folder.setNotes(updatedFolder.getNotes());
+                folder.setSubFolders(updatedFolder.getSubFolders());
+                folder.setSummary(updatedFolder.getSummary());
+
+                System.out.println("Loaded folder '" + folder.getName() + "' with " +
+                        folder.getNotes().size() + " notes and " +
+                        folder.getSubFolders().size() + " subfolders");
+            }
+        } catch (IOException e) {
+            System.err.println("Error loading folder metadata for folder " + folder.getName() + ": " + e.getMessage());
+        }
+
+        // Recursively ensure all subfolders are loaded
+        for (Folder subFolder : folder.getSubFolders()) {
+            ensureFolderFullyLoaded(subFolder);
+        }
+    }
     @Override
     public void removeRootFolder(Folder folder) {
         List<Folder> rootFolders = getRootFolders();
@@ -230,10 +289,29 @@ public class FileSystemStorageService implements StorageService {
         }
     }
 
+    // In FileSystemStorageService.java, the issue might be related to how folders and notes are loaded
+
     @Override
     public List<SearchResult> searchNotes(String query) {
         List<SearchResult> results = new ArrayList<>();
-        searchInFolder(null, getRootFolders(), query, "", results);
+
+        // First ensure we have the most up-to-date data
+        List<Folder> rootFolders = getRootFolders();
+
+        // Log the search operation
+        System.out.println("Searching for \"" + query + "\" in " + rootFolders.size() + " root folders");
+
+        if (rootFolders.isEmpty()) {
+            System.out.println("No root folders found.");
+            return results; // Return empty list if no folders
+        }
+
+        // Now perform the search
+        searchInFolder(null, rootFolders, query, "", results);
+
+        // Log the results
+        System.out.println("Found " + results.size() + " results for \"" + query + "\"");
+
         return results;
     }
 
@@ -243,48 +321,75 @@ public class FileSystemStorageService implements StorageService {
             String currentPath = pathPrefix.isEmpty() ?
                     folder.getName() : pathPrefix + " > " + folder.getName();
 
-            // Search in notes
-            for (Note note : folder.getNotes()) {
-                if (matchesQuery(note, query)) {
-                    String previewText = generatePreview(note.getContent(), query);
-                    results.add(new SearchResult(note, folder, currentPath, previewText));
+            System.out.println("Searching in folder: " + currentPath);
+
+            // Ensure folder notes are loaded correctly
+            if (folder.getNotes() == null) {
+                System.out.println("Warning: Notes list is null for folder: " + folder.getName());
+                folder.setNotes(new ArrayList<>());
+            } else {
+                System.out.println("Folder has " + folder.getNotes().size() + " notes");
+
+                // Search in notes
+                for (Note note : folder.getNotes()) {
+                    if (matchesQuery(note, query)) {
+                        String previewText = generatePreview(note.getContent(), query);
+                        System.out.println("Match found in note: " + note.getTitle());
+                        results.add(new SearchResult(note, folder, currentPath, previewText));
+                    }
                 }
             }
 
-            // Recursively search in subfolders
-            searchInFolder(folder, folder.getSubFolders(), query, currentPath, results);
+            // Ensure subfolder list is loaded correctly
+            if (folder.getSubFolders() == null) {
+                System.out.println("Warning: Subfolders list is null for folder: " + folder.getName());
+                folder.setSubFolders(new ArrayList<>());
+            } else {
+                System.out.println("Folder has " + folder.getSubFolders().size() + " subfolders");
+
+                // Recursively search in subfolders
+                searchInFolder(folder, folder.getSubFolders(), query, currentPath, results);
+            }
         }
     }
 
     private boolean matchesQuery(Note note, String query) {
+        if (note == null) {
+            System.out.println("Warning: Note is null during search");
+            return false;
+        }
+
         String lowerQuery = query.toLowerCase();
 
         // Check title
-        if (note.getTitle().toLowerCase().contains(lowerQuery)) {
+        if (note.getTitle() != null && note.getTitle().toLowerCase().contains(lowerQuery)) {
             return true;
         }
 
         // Check content (strip HTML for text search)
-        String plainContent = stripHtml(note.getContent()).toLowerCase();
-        return plainContent.contains(lowerQuery);
-    }
+        if (note.getContent() != null) {
+            String plainContent = stripHtml(note.getContent()).toLowerCase();
+            return plainContent.contains(lowerQuery);
+        }
 
-    private String stripHtml(String html) {
-        // Simple HTML stripping for search
-        return html.replaceAll("<[^>]*>", " ")
-                .replaceAll("&nbsp;", " ")
-                .replaceAll("\\s+", " ")
-                .trim();
+        return false;
     }
 
     private String generatePreview(String content, String query) {
+        if (content == null) {
+            return "No content available";
+        }
+
         // Generate a preview with context around the match
         String plainContent = stripHtml(content);
         String lowerContent = plainContent.toLowerCase();
         String lowerQuery = query.toLowerCase();
 
         int matchPos = lowerContent.indexOf(lowerQuery);
-        if (matchPos == -1) return plainContent.substring(0, Math.min(100, plainContent.length())) + "...";
+        if (matchPos == -1) {
+            // If no exact match found (shouldn't happen normally), return the beginning
+            return plainContent.substring(0, Math.min(100, plainContent.length())) + "...";
+        }
 
         // Get some context around the match
         int previewStart = Math.max(0, matchPos - 50);
@@ -298,4 +403,14 @@ public class FileSystemStorageService implements StorageService {
 
         return preview;
     }
+
+
+    private String stripHtml(String html) {
+        // Simple HTML stripping for search
+        return html.replaceAll("<[^>]*>", " ")
+                .replaceAll("&nbsp;", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+
 }
