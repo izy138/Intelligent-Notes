@@ -12,7 +12,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.regex.Pattern;
 
 public class FileSystemStorageService implements StorageService {
     private static final String BASE_STORAGE_PATH = "data/";
@@ -31,7 +30,11 @@ public class FileSystemStorageService implements StorageService {
     }
 
     @Override
-    public void saveNote(Note note, Folder parent) {
+    public void saveNote(Note note, Folder parent) throws IOException {
+        if (note == null) {
+            throw new IllegalArgumentException("Cannot save null note");
+        }
+
         // Generate ID if new note
         if (note.getId() == null) {
             note.setId(UUID.randomUUID().toString());
@@ -47,6 +50,16 @@ public class FileSystemStorageService implements StorageService {
         try {
             // Save note file
             String folderPath = getFolderPath(parent);
+            File folderDir = new File(folderPath);
+
+            // Ensure directory exists
+            if (!folderDir.exists()) {
+                boolean created = folderDir.mkdirs();
+                if (!created) {
+                    throw new IOException("Failed to create directory: " + folderPath);
+                }
+            }
+
             File noteFile = new File(folderPath + "note_" + note.getId() + ".json");
             objectMapper.writeValue(noteFile, note);
 
@@ -56,7 +69,8 @@ public class FileSystemStorageService implements StorageService {
                 saveFolder(parent, getParentFolder(parent));
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Error saving note: " + e.getMessage());
+            throw e; // Re-throw the exception to let the caller handle it
         }
     }
 
@@ -288,8 +302,6 @@ public class FileSystemStorageService implements StorageService {
             collectSubfolders(subFolder, allFolders);
         }
     }
-
-    // In FileSystemStorageService.java, the issue might be related to how folders and notes are loaded
 
     @Override
     public List<SearchResult> searchNotes(String query) {

@@ -13,9 +13,6 @@ import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
-        import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.input.KeyCode;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -41,10 +38,10 @@ public class NoteEditorComponent extends VBox {
     private StorageService storageService;
     private AISummaryService aiService;
     private Folder parentFolder;
-    // In NoteEditorComponent.java, add this field
     private Runnable onTitleChangeCallback;
-
-
+    private Timeline autoSaveTimer;
+    private Label autoSaveStatus;
+    private static final int AUTOSAVE_DELAY_MS = 2000; // saves 2 seconds after typing stops
 
     public NoteEditorComponent(StorageService storageService, AISummaryService aiService) {
         this.storageService = storageService;
@@ -62,6 +59,10 @@ public class NoteEditorComponent extends VBox {
         contentEditor.setPrefHeight(500);
         VBox.setVgrow(contentEditor, Priority.ALWAYS);
 
+        // Create autosave status indicator
+        autoSaveStatus = new Label("Autosave: Ready");
+        autoSaveStatus.setStyle("-fx-font-size: 12px; -fx-text-fill: #707070;");
+
         // Create action toolbar with buttons
         HBox actionToolbar = new HBox(10);
         saveButton = new Button("Save");
@@ -72,7 +73,7 @@ public class NoteEditorComponent extends VBox {
         titleField.textProperty().addListener((obs, oldVal, newVal) -> {
             if (currentNote != null) {
                 currentNote.setTitle(newVal);
-                scheduleSave();
+                scheduleAutosave();
 
                 // Call the callback when title changes
                 if (onTitleChangeCallback != null) {
@@ -81,10 +82,16 @@ public class NoteEditorComponent extends VBox {
             }
         });
 
-        // Add editor change listener
+        // Setup autosave for content changes - listen to key and mouse events
         contentEditor.setOnKeyReleased(e -> {
             if (currentNote != null) {
-                scheduleSave();
+                scheduleAutosave();
+            }
+        });
+
+        contentEditor.setOnMouseReleased(e -> {
+            if (currentNote != null) {
+                scheduleAutosave();
             }
         });
 
@@ -102,33 +109,53 @@ public class NoteEditorComponent extends VBox {
         setEditorEnabled(false);
     }
 
-    // Auto-save functionality with debounce
-    private Timeline saveTimer;
-    private void scheduleSave() {
-        if (saveTimer != null) {
-            saveTimer.stop();
+    private void scheduleAutosave() {
+        // If a timer is already running, stop it
+        if (autoSaveTimer != null) {
+            autoSaveTimer.stop();
         }
 
-        saveTimer = new Timeline(new KeyFrame(Duration.millis(1500), e -> saveNote()));
+        // Update status to show pending autosave
+        autoSaveStatus.setText("Autosave: Pending...");
+        autoSaveStatus.setStyle("-fx-font-size: 12px; -fx-text-fill: #f0ad4e;");
 
-        saveTimer.play();
+        // Create a new timer that will save after the delay
+        autoSaveTimer = new Timeline(new KeyFrame(Duration.millis(AUTOSAVE_DELAY_MS), e -> saveNote()));
+        autoSaveTimer.setCycleCount(1);
+        autoSaveTimer.play();
     }
 
+    // autosave when a new note is created
     public void createNewNote(Folder parent) {
-        this.parentFolder = parent;
-        currentNote = new Note();
-        currentNote.setId(UUID.randomUUID().toString());
-        currentNote.setTitle("Untitled Note");
-        currentNote.setContent("");
-        currentNote.setCreatedAt(LocalDateTime.now());
-        currentNote.setUpdatedAt(LocalDateTime.now());
+    this.parentFolder = parent;
+    currentNote = new Note();
+    currentNote.setId(UUID.randomUUID().toString());
+    currentNote.setTitle("Untitled Note");
+    currentNote.setContent("");
+    currentNote.setCreatedAt(LocalDateTime.now());
+    currentNote.setUpdatedAt(LocalDateTime.now());
 
-        titleField.setText(currentNote.getTitle());
-        contentEditor.setHtmlText("");
+    titleField.setText(currentNote.getTitle());
+    contentEditor.setHtmlText("");
 
-        setEditorEnabled(true);
-        titleField.requestFocus();
+    setEditorEnabled(true);
+    titleField.requestFocus();
+
+    // Save the new note immediately
+    try {
+        saveNote();
+    } catch (Exception e) {
+        System.err.println("Error creating new note: " + e.getMessage());
+        e.printStackTrace();
+
+        Alert errorAlert = new Alert(Alert.AlertType.ERROR);
+        errorAlert.setTitle("Error Creating Note");
+        errorAlert.setHeaderText("Could not create new note");
+        errorAlert.setContentText("An error occurred: " + e.getMessage());
+        errorAlert.showAndWait();
     }
+}
+
 
     public void loadNote(Note note, Folder parent) {
         this.currentNote = note;
@@ -138,30 +165,67 @@ public class NoteEditorComponent extends VBox {
         contentEditor.setHtmlText(note.getContent());
 
         setEditorEnabled(true);
+
+        // autosave when a note is loaded
+        autoSaveStatus.setText("Autosave: Ready");
+        autoSaveStatus.setStyle("-fx-font-size: 12px; -fx-text-fill: #707070;");
     }
 
     private void saveNote() {
-        if (currentNote == null || parentFolder == null) return;
+        if (currentNote == null || parentFolder == null) {
+            autoSaveStatus.setText("Autosave: Ready");
+            autoSaveStatus.setStyle("-fx-font-size: 12px; -fx-text-fill: #707070;");
+            return;
+        }
 
-        currentNote.setTitle(titleField.getText());
-        currentNote.setContent(contentEditor.getHtmlText());
-        currentNote.setUpdatedAt(LocalDateTime.now());
+        try {
+            // Update note data from the UI
+            currentNote.setTitle(titleField.getText());
+            currentNote.setContent(contentEditor.getHtmlText());
+            currentNote.setUpdatedAt(LocalDateTime.now());
 
-        storageService.saveNote(currentNote, parentFolder);
+            // Save to storage
+            storageService.saveNote(currentNote, parentFolder);
 
-        // Show save confirmation
-        Label savedLabel = new Label("Saved");
-        savedLabel.setStyle("-fx-text-fill: green;");
+            // Format timestamp for display
+            String timestamp = currentNote.getUpdatedAt().format(
+                    java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"));
 
-        // If there's already a saved label, remove it first
-        this.getChildren().removeIf(node -> node instanceof Label && ((Label) node).getText().equals("Saved"));
+            // Update the status to show successful save
+            autoSaveStatus.setText("Autosave: Saved at " + timestamp);
+            autoSaveStatus.setStyle("-fx-font-size: 12px; -fx-text-fill: green;");
 
-        this.getChildren().add(savedLabel);
+            System.out.println("Note autosaved: " + currentNote.getTitle());
 
-        // Remove the label after 2 seconds
-        PauseTransition pause = new PauseTransition(Duration.seconds(2));
-        pause.setOnFinished(e -> this.getChildren().remove(savedLabel));
-        pause.play();
+            // Reset status after a few seconds
+            PauseTransition statusReset = new PauseTransition(Duration.seconds(3));
+            statusReset.setOnFinished(e -> {
+                autoSaveStatus.setText("Autosave: Ready");
+                autoSaveStatus.setStyle("-fx-font-size: 12px; -fx-text-fill: #707070;");
+            });
+            statusReset.play();
+
+        } catch (IOException e) {
+            System.err.println("Error saving note: " + e.getMessage());
+            e.printStackTrace();
+
+            // Show error in status
+            autoSaveStatus.setText("Autosave: Error! " + e.getMessage());
+            autoSaveStatus.setStyle("-fx-font-size: 12px; -fx-text-fill: red;");
+
+            // Show error dialog for critical errors
+            if (e.getMessage().contains("Permission denied") ||
+                    e.getMessage().contains("disk full") ||
+                    e.getMessage().contains("Failed to create directory")) {
+
+                Alert errorAlert = new Alert(Alert.AlertType.ERROR);
+                errorAlert.setTitle("Save Error");
+                errorAlert.setHeaderText("Could not save your note");
+                errorAlert.setContentText("An error occurred: " + e.getMessage() +
+                        "\n\nPlease make sure the application has write permissions and sufficient disk space.");
+                errorAlert.showAndWait();
+            }
+        }
     }
 
     private void summarizeNote() {
@@ -195,20 +259,32 @@ public class NoteEditorComponent extends VBox {
         summarizeTask.setOnSucceeded(e -> {
             String summary = summarizeTask.getValue();
             currentNote.setSummary(summary);
-            saveNote();
 
-            // Show summary dialog
-            Alert summaryDialog = new Alert(Alert.AlertType.INFORMATION);
-            summaryDialog.setTitle("Note Summary");
-            summaryDialog.setHeaderText("Summary of \"" + currentNote.getTitle() + "\"");
+            try {
+                saveNote();
 
-            TextArea textArea = new TextArea(summary);
-            textArea.setEditable(false);
-            textArea.setWrapText(true);
-            textArea.setPrefHeight(150);
+                // Show summary dialog
+                Alert summaryDialog = new Alert(Alert.AlertType.INFORMATION);
+                summaryDialog.setTitle("Note Summary");
+                summaryDialog.setHeaderText("Summary of \"" + currentNote.getTitle() + "\"");
 
-            summaryDialog.getDialogPane().setContent(textArea);
-            summaryDialog.showAndWait();
+                TextArea textArea = new TextArea(summary);
+                textArea.setEditable(false);
+                textArea.setWrapText(true);
+                textArea.setPrefHeight(150);
+
+                summaryDialog.getDialogPane().setContent(textArea);
+                summaryDialog.showAndWait();
+            } catch (Exception ex) {
+                System.err.println("Error saving summary: " + ex.getMessage());
+                ex.printStackTrace();
+
+                Alert errorAlert = new Alert(Alert.AlertType.ERROR);
+                errorAlert.setTitle("Save Error");
+                errorAlert.setHeaderText("Summary was generated but could not be saved");
+                errorAlert.setContentText("An error occurred: " + ex.getMessage());
+                errorAlert.showAndWait();
+            }
 
             this.getChildren().remove(loadingBox);
         });
@@ -237,8 +313,6 @@ public class NoteEditorComponent extends VBox {
         this.onTitleChangeCallback = callback;
     }
 
-
-    // In NoteEditorComponent.java, update the createFormattingToolbar() method
     private HBox createFormattingToolbar() {
         HBox toolbar = new HBox(5);
         toolbar.setPadding(new Insets(5));
@@ -328,34 +402,6 @@ public class NoteEditorComponent extends VBox {
         button.setPrefHeight(30);
         return button;
     }
-//    private Button createToolbarButton(String text, String tooltip, String iconPath) {
-//        Button button = new Button();
-//        if (text != null && !text.isEmpty()) {
-//            button.setText(text);
-//        }
-//
-//        if (iconPath != null) {
-//            try {
-//                ImageView icon = new ImageView(new Image(getClass().getResourceAsStream("/images/" + iconPath)));
-//                icon.setFitHeight(16);
-//                icon.setFitWidth(16);
-//                button.setGraphic(icon);
-//            } catch (Exception e) {
-//                // Fallback to text if image not found
-//                if (button.getText() == null || button.getText().isEmpty()) {
-//                    button.setText(tooltip.substring(0, 1));
-//                }
-//            }
-//        }
-//
-//        button.setTooltip(new Tooltip(tooltip));
-//        button.setMinWidth(30);
-//        button.setMaxWidth(30);
-//        button.setPrefHeight(30);
-//
-//        return button;
-//    }
-
     private void executeHtmlCommand(String command) {
         // Execute HTML editing command via JavaScript
         WebView webView = getWebViewFromHtmlEditor(contentEditor);
@@ -365,10 +411,8 @@ public class NoteEditorComponent extends VBox {
             );
         }
     }
-
     private WebView getWebViewFromHtmlEditor(HTMLEditor editor) {
         // Access the WebView component inside the HTMLEditor
-        // This is a bit hacky but necessary to access the full HTML capabilities
         for (Node node : editor.lookupAll(".web-view")) {
             if (node instanceof WebView) {
                 return (WebView) node;

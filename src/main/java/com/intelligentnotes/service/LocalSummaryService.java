@@ -21,7 +21,7 @@ public class LocalSummaryService implements AISummaryService {
 
         // Extract key sentences
         List<String> sentences = splitIntoSentences(plainText);
-        List<String> keySentences = extractKeySentences(sentences, 3);
+        List<String> keySentences = extractKeySentences(sentences, 5);
 
         return String.join(" ", keySentences);
     }

@@ -4,7 +4,6 @@ import com.intelligentnotes.model.Note;
 import okhttp3.*;
 import org.json.JSONArray;
 import org.json.JSONObject;
-
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -85,10 +84,18 @@ public class ClaudeAISummaryService implements AISummaryService {
                 JSONObject jsonResponse = new JSONObject(responseBody);
 
                 // Extract the summary from Claude's response
-                JSONObject contentObj = jsonResponse.getJSONObject("content");
-                String summary = contentObj.getString("text");
+                // The response structure changed - content is now an array, not an object
+                JSONArray contentArray = jsonResponse.getJSONArray("content");
 
-                return summary.trim();
+                // Get the first content item
+                if (contentArray.length() > 0) {
+                    JSONObject contentItem = contentArray.getJSONObject(0);
+                    String summary = contentItem.getString("text");
+                    return summary.trim();
+                } else {
+                    System.err.println("Claude API returned empty content array");
+                    return fallbackService.summarizeNoteContent(content);
+                }
             }
         } catch (Exception e) {
             System.err.println("Error calling Claude API: " + e.getMessage());
@@ -170,10 +177,18 @@ public class ClaudeAISummaryService implements AISummaryService {
                 JSONObject jsonResponse = new JSONObject(responseBody);
 
                 // Extract the summary from Claude's response
-                JSONObject contentObj = jsonResponse.getJSONObject("content");
-                String summary = contentObj.getString("text");
+                // The response structure changed - content is now an array, not an object
+                JSONArray contentArray = jsonResponse.getJSONArray("content");
 
-                return summary.trim();
+                // Get the first content item
+                if (contentArray.length() > 0) {
+                    JSONObject contentItem = contentArray.getJSONObject(0);
+                    String summary = contentItem.getString("text");
+                    return summary.trim();
+                } else {
+                    System.err.println("Claude API returned empty content array");
+                    return fallbackService.summarizeFolderContent(notes);
+                }
             }
         } catch (Exception e) {
             System.err.println("Error calling Claude API: " + e.getMessage());

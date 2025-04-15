@@ -7,7 +7,6 @@ import com.intelligentnotes.service.StorageService;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.geometry.Side;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -19,13 +18,8 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-
+import java.io.IOException;
 import java.util.*;
-
-import javafx.application.Platform;
-
-
-import java.util.function.Consumer;
 
 public class FolderManagementComponent extends VBox {
     private TreeView<String> folderTreeView;
@@ -208,6 +202,7 @@ public class FolderManagementComponent extends VBox {
             System.out.println("Folder selected: " + item.getValue());
         }
     }
+
     public Folder findParentFolder(TreeItem<String> item) {
         if (item == null) return null;
 
@@ -224,7 +219,6 @@ public class FolderManagementComponent extends VBox {
 
         return null; // Shouldn't happen with proper structure
     }
-
 
     public void createNewFolder() {
         TextInputDialog dialog = new TextInputDialog();
@@ -249,17 +243,23 @@ public class FolderManagementComponent extends VBox {
             TreeItem<String> root = folderTreeView.getRoot();
 
             // Save folder as a root folder
-            storageService.saveFolder(newFolder, null);
+            try {
+                storageService.saveFolder(newFolder, null);
 
-            // Update UI
-            TreeItem<String> newFolderItem = createFolderItem(newFolder);
-            root.getChildren().add(newFolderItem);
+                // Update UI
+                TreeItem<String> newFolderItem = createFolderItem(newFolder);
+                root.getChildren().add(newFolderItem);
 
-            // If this was the first folder, remove empty state
-            this.getChildren().remove(emptyLabel);
+                // If this was the first folder, remove empty state
+                this.getChildren().remove(emptyLabel);
 
-            // Select the new folder
-            folderTreeView.getSelectionModel().select(newFolderItem);
+                // Select the new folder
+                folderTreeView.getSelectionModel().select(newFolderItem);
+            } catch (IOException e) {
+                showErrorAlert("Error Creating Folder",
+                        "Could not create folder: " + e.getMessage());
+                e.printStackTrace();
+            }
         });
     }
 
@@ -330,30 +330,36 @@ public class FolderManagementComponent extends VBox {
         if (result.isPresent() && result.get() == ButtonType.OK) {
             Folder parentFolder = findParentFolder(selectedItem);
 
-            if (selectedObj instanceof Folder) {
-                Folder folder = (Folder) selectedObj;
-                storageService.deleteFolder(folder, parentFolder);
-            } else if (selectedObj instanceof Note) {
-                Note note = (Note) selectedObj;
-                storageService.deleteNote(note, parentFolder);
+            try {
+                if (selectedObj instanceof Folder) {
+                    Folder folder = (Folder) selectedObj;
+                    storageService.deleteFolder(folder, parentFolder);
+                } else if (selectedObj instanceof Note) {
+                    Note note = (Note) selectedObj;
+                    storageService.deleteNote(note, parentFolder);
 
-                // Clear the editor if the deleted note was being edited
-                if (noteEditor.isNoteLoaded() &&
-                        noteEditor.getCurrentNote() != null &&
-                        noteEditor.getCurrentNote().getId().equals(note.getId())) {
+                    // Clear the editor if the deleted note was being edited
+                    if (noteEditor.isNoteLoaded() &&
+                            noteEditor.getCurrentNote() != null &&
+                            noteEditor.getCurrentNote().getId().equals(note.getId())) {
 
-                    // Set empty state in main layout
-                    if (mainLayout != null) {
-                        VBox emptyState = createEmptyState();
-                        mainLayout.setCenter(emptyState);
+                        // Set empty state in main layout
+                        if (mainLayout != null) {
+                            VBox emptyState = createEmptyState();
+                            mainLayout.setCenter(emptyState);
+                        }
                     }
                 }
-            }
 
-            // Update UI
-            TreeItem<String> parentItem = selectedItem.getParent();
-            parentItem.getChildren().remove(selectedItem);
-            itemsMap.remove(selectedItem);
+                // Update UI
+                TreeItem<String> parentItem = selectedItem.getParent();
+                parentItem.getChildren().remove(selectedItem);
+                itemsMap.remove(selectedItem);
+            } catch (Exception e) {
+                showErrorAlert("Error Deleting " + itemType,
+                        "Could not delete " + itemType + ": " + e.getMessage());
+                e.printStackTrace();
+            }
         }
     }
 
@@ -459,42 +465,58 @@ public class FolderManagementComponent extends VBox {
         Folder targetFolder = (Folder) targetObj;
         Folder sourceParent = findParentFolder(sourceItem);
 
-        // Update data model
-        if (sourceObj instanceof Folder) {
-            Folder sourceFolder = (Folder) sourceObj;
+        try {
+            // Update data model
+            if (sourceObj instanceof Folder) {
+                Folder sourceFolder = (Folder) sourceObj;
 
-            // Remove from old parent
-            if (sourceParent != null) {
-                sourceParent.getSubFolders().remove(sourceFolder);
-                storageService.saveFolder(sourceParent, findParentFolder(sourceItem.getParent()));
-            } else {
-                // This was a root folder, special handling
-                storageService.removeRootFolder(sourceFolder);
+                // Remove from old parent
+                if (sourceParent != null) {
+                    sourceParent.getSubFolders().remove(sourceFolder);
+                    storageService.saveFolder(sourceParent, findParentFolder(sourceItem.getParent()));
+                } else {
+                    // This was a root folder, special handling
+                    storageService.removeRootFolder(sourceFolder);
+                }
+
+                // Add to new parent
+                targetFolder.getSubFolders().add(sourceFolder);
+                storageService.saveFolder(targetFolder, findParentFolder(targetItem));
+
+            } else if (sourceObj instanceof Note) {
+                Note sourceNote = (Note) sourceObj;
+
+                // Remove from old parent
+                if (sourceParent != null) {
+                    sourceParent.getNotes().remove(sourceNote);
+                    storageService.saveFolder(sourceParent, findParentFolder(sourceItem.getParent()));
+                }
+
+                // Add to new parent
+                targetFolder.getNotes().add(sourceNote);
+                storageService.saveFolder(targetFolder, findParentFolder(targetItem));
             }
 
-            // Add to new parent
-            targetFolder.getSubFolders().add(sourceFolder);
-            storageService.saveFolder(targetFolder, findParentFolder(targetItem));
-
-        } else if (sourceObj instanceof Note) {
-            Note sourceNote = (Note) sourceObj;
-
-            // Remove from old parent
-            if (sourceParent != null) {
-                sourceParent.getNotes().remove(sourceNote);
-                storageService.saveFolder(sourceParent, findParentFolder(sourceItem.getParent()));
-            }
-
-            // Add to new parent
-            targetFolder.getNotes().add(sourceNote);
-            storageService.saveFolder(targetFolder, findParentFolder(targetItem));
+            // Update UI
+            sourceItem.getParent().getChildren().remove(sourceItem);
+            targetItem.getChildren().add(sourceItem);
+            targetItem.setExpanded(true);
+        } catch (IOException e) {
+            showErrorAlert("Error Moving Item",
+                    "Could not move item: " + e.getMessage());
+            e.printStackTrace();
         }
-
-        // Update UI
-        sourceItem.getParent().getChildren().remove(sourceItem);
-        targetItem.getChildren().add(sourceItem);
-        targetItem.setExpanded(true);
     }
+
+    // Add a helper method to show error alerts
+    private void showErrorAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
 
     // Custom TreeCell for folder renaming
     private class FolderTreeCell extends TreeCell<String> {
@@ -602,10 +624,19 @@ public class FolderManagementComponent extends VBox {
 
                     // Update folder in storage
                     Folder parentFolder = findParentFolder(treeItem);
-                    storageService.saveFolder(folder, parentFolder);
+                    try {
+                        storageService.saveFolder(folder, parentFolder);
 
-                    // Make sure the TreeItem value is updated
-                    treeItem.setValue(newValue);
+                        // Make sure the TreeItem value is updated
+                        treeItem.setValue(newValue);
+                    } catch (IOException e) {
+                        showErrorAlert("Error Renaming Folder",
+                                "Could not save folder name change: " + e.getMessage());
+                        e.printStackTrace();
+
+                        // Revert to old name if save failed
+                        treeItem.setValue(folder.getName());
+                    }
                 }
             }
         }
@@ -689,23 +720,33 @@ public class FolderManagementComponent extends VBox {
 
                 // Save the updated folder
                 Folder parentFolder = findParentFolder(getTreeItem());
-                storageService.saveFolder(folder, parentFolder);
+                try {
+                    storageService.saveFolder(folder, parentFolder);
 
-                // Reset graphic
-                setGraphic(getTreeItem().getGraphic());
+                    // Reset graphic
+                    setGraphic(getTreeItem().getGraphic());
 
-                // Show summary dialog
-                Alert summaryDialog = new Alert(Alert.AlertType.INFORMATION);
-                summaryDialog.setTitle("Folder Summary");
-                summaryDialog.setHeaderText("Summary of \"" + folder.getName() + "\"");
+                    // Show summary dialog
+                    Alert summaryDialog = new Alert(Alert.AlertType.INFORMATION);
+                    summaryDialog.setTitle("Folder Summary");
+                    summaryDialog.setHeaderText("Summary of \"" + folder.getName() + "\"");
 
-                TextArea textArea = new TextArea(summary);
-                textArea.setEditable(false);
-                textArea.setWrapText(true);
-                textArea.setPrefHeight(150);
+                    TextArea textArea = new TextArea(summary);
+                    textArea.setEditable(false);
+                    textArea.setWrapText(true);
+                    textArea.setPrefHeight(150);
 
-                summaryDialog.getDialogPane().setContent(textArea);
-                summaryDialog.showAndWait();
+                    summaryDialog.getDialogPane().setContent(textArea);
+                    summaryDialog.showAndWait();
+                } catch (IOException e2) {
+                    setGraphic(getTreeItem().getGraphic());
+
+                    Alert errorAlert = new Alert(Alert.AlertType.ERROR);
+                    errorAlert.setTitle("Save Error");
+                    errorAlert.setContentText("Summary was generated but could not be saved: " + e2.getMessage());
+                    errorAlert.showAndWait();
+                    e2.printStackTrace();
+                }
             });
 
             summarizeTask.setOnFailed(e -> {
@@ -720,4 +761,5 @@ public class FolderManagementComponent extends VBox {
             new Thread(summarizeTask).start();
         }
     }
+
 }

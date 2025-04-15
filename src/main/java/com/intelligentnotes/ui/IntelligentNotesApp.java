@@ -1,14 +1,9 @@
 package com.intelligentnotes.ui;
 
-import com.intelligentnotes.model.Folder;
-import com.intelligentnotes.model.Note;
 import com.intelligentnotes.model.SearchResult;
 import com.intelligentnotes.service.ClaudeAISummaryService;
 import com.intelligentnotes.service.FileSystemStorageService;
-//import com.intelligentnotes.service.HybridSummaryService;
 import com.intelligentnotes.service.StorageService;
-import com.intelligentnotes.ui.FolderManagementComponent;
-import com.intelligentnotes.ui.NoteEditorComponent;
 import javafx.application.Application;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
@@ -25,8 +20,6 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
-import javafx.util.Pair;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.prefs.Preferences;
@@ -260,6 +253,7 @@ public class IntelligentNotesApp extends Application {
 
         return searchBar;
     }
+
     private void handleCreateNew() {
         // Show dropdown menu for creating a new note or folder
         ContextMenu createMenu = new ContextMenu();
