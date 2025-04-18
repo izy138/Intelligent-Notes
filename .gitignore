@@ -36,3 +36,11 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+# Ignore data storage folder
+/data/
+/data/*
+
+# Ignore files that might contain API keys
+*.properties
+*/preferences/*
