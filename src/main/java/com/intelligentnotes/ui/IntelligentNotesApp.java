@@ -46,7 +46,7 @@ public class IntelligentNotesApp extends Application {
         // Main layout container
         mainLayout = new BorderPane();
 
-        // Create components - ORDER MATTERS HERE!
+        // Create components
         // First create the noteEditor
         noteEditor = new NoteEditorComponent(storageService, summaryService);
 

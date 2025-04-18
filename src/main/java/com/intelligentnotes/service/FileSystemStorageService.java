@@ -70,7 +70,7 @@ public class FileSystemStorageService implements StorageService {
             }
         } catch (IOException e) {
             System.err.println("Error saving note: " + e.getMessage());
-            throw e; // Re-throw the exception to let the caller handle it
+            throw e;
         }
     }
 
@@ -200,7 +200,7 @@ public class FileSystemStorageService implements StorageService {
         return rootFolders;
     }
 
-    // Add this helper method to ensure folders are fully loaded
+    // helper method to ensure folders are fully loaded
     private void ensureFolderFullyLoaded(Folder folder) {
         if (folder == null) return;
 
@@ -272,9 +272,6 @@ public class FileSystemStorageService implements StorageService {
     }
 
     private Folder getParentFolder(Folder folder) {
-        // This is a simplified version - in a real implementation,
-        // you would need to traverse the folder structure
-        // or maintain parent references
         List<Folder> allFolders = getAllFolders();
 
         for (Folder potentialParent : allFolders) {
@@ -399,7 +396,7 @@ public class FileSystemStorageService implements StorageService {
 
         int matchPos = lowerContent.indexOf(lowerQuery);
         if (matchPos == -1) {
-            // If no exact match found (shouldn't happen normally), return the beginning
+            // If no exact match found, return the beginning
             return plainContent.substring(0, Math.min(100, plainContent.length())) + "...";
         }
 

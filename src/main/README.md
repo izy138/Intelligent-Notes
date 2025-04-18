@@ -60,12 +60,4 @@ The program DOES NOT WORK through the IntelliJIDE Run button.
 You must launch it from the terminal.
 if anyone wants to troubleshoot that by all means but its not the most important thing to worry about rn.
 
-STILL NEED TO FIX:
-Search functionality
-Ai functionality with a free AI
-
-The Service folder is full of different ai that need to be redone. 
-FreeTierNLPService
-HybridSummaryService
-LocalSummaryService
 

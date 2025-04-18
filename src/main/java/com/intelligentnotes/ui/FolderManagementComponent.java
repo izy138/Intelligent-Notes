@@ -71,7 +71,7 @@ public class FolderManagementComponent extends VBox {
         // Load folders from storage
         loadFolders();
 
-//        add this code to handle keyboard events
+//     handle keyboard events
         folderTreeView.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.DELETE) {
                 deleteSelected();
@@ -79,7 +79,6 @@ public class FolderManagementComponent extends VBox {
             }
         });
 
-        // In FolderManagementComponent constructor, add this code at the end
         // Create action buttons
         HBox actionBar = new HBox(10);
         actionBar.setPadding(new Insets(5));
@@ -94,7 +93,7 @@ public class FolderManagementComponent extends VBox {
 
         actionBar.getChildren().addAll(newFolderBtn, newNoteBtn, deleteBtn);
 
-        // Add action bar to the bottom of the component
+        // Add action bar to the bottom
         this.getChildren().add(actionBar);
     }
 
@@ -197,8 +196,6 @@ public class FolderManagementComponent extends VBox {
                 System.out.println("Main layout is null when handling selection");
             }
         } else if (selectedObj instanceof Folder) {
-            // If a folder is selected, we could add folder summary view here
-            // But for now, we'll leave the current view as is
             System.out.println("Folder selected: " + item.getValue());
         }
     }
@@ -217,7 +214,7 @@ public class FolderManagementComponent extends VBox {
             return (Folder) obj;
         }
 
-        return null; // Shouldn't happen with proper structure
+        return null;
     }
 
     public void createNewFolder() {
@@ -235,7 +232,6 @@ public class FolderManagementComponent extends VBox {
             newFolder.setNotes(new ArrayList<>());
             newFolder.setSubFolders(new ArrayList<>());
 
-            // IMPORTANT: Always create at root level unless specifically requested otherwise
             Folder parentFolder = null;
             TreeItem<String> selectedItem = folderTreeView.getSelectionModel().getSelectedItem();
 
@@ -571,7 +567,7 @@ public class FolderManagementComponent extends VBox {
                     setText(item);
                     setGraphic(getTreeItem().getGraphic());
 
-                    // Check if this cell represents a folder and apply bold style
+                    // Check if this cell represents a folder make it bold
                     TreeItem<String> treeItem = getTreeItem();
                     if (treeItem != null && itemsMap.containsKey(treeItem)) {
                         Object itemObj = itemsMap.get(treeItem);
@@ -641,7 +637,6 @@ public class FolderManagementComponent extends VBox {
             }
         }
 
-        // Inside FolderTreeCell class in FolderManagementComponent.java
         private ContextMenu createContextMenu() {
             ContextMenu menu = new ContextMenu();
 

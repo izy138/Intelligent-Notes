@@ -105,7 +105,7 @@ public class LocalSummaryService implements AISummaryService {
             return new ArrayList<>(sentences);
         }
 
-        // Simple approach: take first sentence, one from middle, and last sentence
+        // take first sentence, one from middle, and last sentence
         List<String> key = new ArrayList<>();
         key.add(sentences.get(0)); // First sentence often has context
 
@@ -133,7 +133,7 @@ public class LocalSummaryService implements AISummaryService {
     }
 
     private boolean isStopWord(String word) {
-        // Common English stop words
+        // Common stop words
         Set<String> stopWords = new HashSet<>(Arrays.asList(
                 "the", "and", "that", "have", "this", "with", "from", "they", "will",
                 "would", "there", "their", "what", "about", "which", "when", "were", "into"

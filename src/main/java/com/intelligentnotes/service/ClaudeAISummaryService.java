@@ -84,7 +84,6 @@ public class ClaudeAISummaryService implements AISummaryService {
                 JSONObject jsonResponse = new JSONObject(responseBody);
 
                 // Extract the summary from Claude's response
-                // The response structure changed - content is now an array, not an object
                 JSONArray contentArray = jsonResponse.getJSONArray("content");
 
                 // Get the first content item
@@ -177,7 +176,6 @@ public class ClaudeAISummaryService implements AISummaryService {
                 JSONObject jsonResponse = new JSONObject(responseBody);
 
                 // Extract the summary from Claude's response
-                // The response structure changed - content is now an array, not an object
                 JSONArray contentArray = jsonResponse.getJSONArray("content");
 
                 // Get the first content item
