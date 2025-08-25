@@ -21,8 +21,9 @@ verify you did it correctly by: brew help if this command work ^ continue:
 once homebrew is installed enter:
 ```
 brew install maven
-this will take a long time btw just let it install
 ```
+this will take a long time btw just let it install
+
 check maven version:
 ```
 mvn -version
